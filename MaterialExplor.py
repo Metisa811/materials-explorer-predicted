@@ -9,11 +9,11 @@ import numpy as np
 import os
 import sys
 
-# تنظیمات اولیه صفحه
+# Initial Page Configuration
 st.set_page_config(page_title="Materials Explorer Pro", layout="wide")
 
 def resource_path(relative_path):
-    """ مسیر فایل‌ها را پیدا می‌کند (سازگار با محیط‌های مختلف) """
+    """ Find file paths (compatible with different environments like PyInstaller or Streamlit Cloud) """
     try:
         base_path = sys._MEIPASS
     except Exception:
@@ -112,14 +112,26 @@ st.title("🧪 Materials & Elastic Properties Explorer Pro")
 st.markdown("**Blue = DFT Verified | Orange = Not Verified | Click → View 3D Structure**")
 st.markdown("---")
 
+# Calculate and display dataset statistics
+if not global_df.empty:
+    total_mats = len(global_df)
+    verified_mats = len(global_df[global_df['Is_DFT_Verified'].astype(str).str.lower() == 'true'])
+    unverified_mats = total_mats - verified_mats
+    
+    col_stat1, col_stat2, col_stat3 = st.columns(3)
+    col_stat1.metric("Total Materials", total_mats)
+    col_stat2.metric("DFT Verified (Blue)", verified_mats)
+    col_stat3.metric("Not Verified (Orange)", unverified_mats)
+    st.markdown("---")
+
 @st.dialog("📊 Prediction Models Accuracy", width="large")
 def show_accuracy_metrics():
     st.code("""
 ======================================================================
-خلاصه‌ی نهایی کامل — 48 خاصیت رگرسیونی + ۱ کلاسیفایر
+Final Complete Summary — 48 Regression Properties + 1 Classifier
 ======================================================================
 
-تارگت                                R2        MAE
+Target                               R2        MAE
 --------------------------------------------------
 Bulk_Modulus_GPa                  0.981      5.423
 Shear_Modulus_GPa                 0.872      7.908
@@ -173,14 +185,14 @@ Debye_Temperature_K               0.891     27.912
 Brittleness (classifier)       Acc=0.861   F1=0.768
     """, language=None)
 
-if st.button("📊 نمایش دقت پیش‌بینی‌ها (Metrics)", type="primary"):
+if st.button("📊 Show Prediction Metrics", type="primary"):
     show_accuracy_metrics()
 
 if global_df.empty:
     st.warning("No valid data could be loaded. Please ensure `ptable2.csv` and `vaspkit_output.json` are in the directory.")
     st.stop()
 
-# استایل اسلایدر نئونی
+# Neon Slider Styling
 st.markdown("""
 <style>
     .stSlider > div > div > div > div {
@@ -195,24 +207,24 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# مقداردهی متغیرهای استیت
+# Initialize Session State Variables
 if "selected_material" not in st.session_state:
     st.session_state.selected_material = None
 if "show_3d" not in st.session_state:
     st.session_state.show_3d = False
 
-# ====================== سایدبار ======================
+# ====================== SIDEBAR ======================
 with st.sidebar:
     st.header("🔍 Material Details")
 
     if st.session_state.selected_material:
         mat = st.session_state.selected_material
         
-        # چک کردن اینکه ماده انتخاب شده در دیتاست موجود باشد
+        # Check if selected material exists in dataset
         if mat in global_df['material'].values:
             row = global_df[global_df['material'] == mat].iloc[0]
 
-            # نمایش وضعیت DFT با رنگ‌ها
+            # Display DFT status with colors
             dft_status = str(row.get("Is_DFT_Verified", "Unknown"))
             if dft_status.lower() == "true":
                 st.info("🔹 DFT Verified")
@@ -221,16 +233,16 @@ with st.sidebar:
 
             st.markdown(f"### **{mat}**")
 
-            # دکمه 3D
+            # 3D Viewer Button
             if st.button("View 3D Crystal Structure", type="primary", use_container_width=True):
                 st.session_state.show_3d = True
 
-            # نمایش خواص
+            # Display Properties
             st.divider()
             details = row.drop("material")
             for col, val in details.items():
                 if pd.isna(val): continue
-                # مخفی کردن ستون‌های خیلی طولانی
+                # Hide excessively long columns if needed, format numbers
                 if isinstance(val, (int, float, np.number)):
                     st.write(f"**{str(col).replace('_', ' ')}**: {val:.4f}")
                 else:
@@ -329,7 +341,7 @@ if st.session_state.show_3d and st.session_state.selected_material:
     except Exception as e:
         st.error(f"Unexpected Error in 3D viewer: {e}")
 
-# ====================== نمودار اصلی ======================
+# ====================== MAIN CHART ======================
 st.markdown("### Chart Settings")
 
 dft_filter = st.radio(
@@ -349,7 +361,7 @@ with col2:
                                index=all_features.index("Elastic_C11") if "Elastic_C11" in all_features else 0)
 
 if x_axis_name and y_axis_name:
-    # پاکسازی داده‌ها و تبدیل به عددی برای اسلایدر
+    # Clean data and convert to numeric for sliders
     clean_df = global_df.copy()
     clean_df[x_axis_name] = pd.to_numeric(clean_df[x_axis_name], errors='coerce')
     clean_df[y_axis_name] = pd.to_numeric(clean_df[y_axis_name], errors='coerce')
@@ -377,11 +389,11 @@ if x_axis_name and y_axis_name:
         else:
             y_range = (y_min_val, y_max_val)
 
-    # اعمال فیلتر بر اساس اسلایدرها
+    # Apply slider filters
     plot_df = clean_df[(clean_df[x_axis_name] >= x_range[0]) & (clean_df[x_axis_name] <= x_range[1]) & 
                        (clean_df[y_axis_name] >= y_range[0]) & (clean_df[y_axis_name] <= y_range[1])].copy()
 
-    # اعمال فیلتر وضعیت DFT
+    # Apply DFT status filter
     if dft_filter == "Only DFT Verified (Blue)":
         plot_df = plot_df[plot_df['Is_DFT_Verified'].astype(str).str.lower() == 'true']
     elif dft_filter == "Only Not Verified (Orange)":
@@ -390,7 +402,7 @@ if x_axis_name and y_axis_name:
     if plot_df.empty:
         st.warning("No data in the selected range.")
     else:
-        # تنظیم ستون Is_DFT_Verified به عنوان رشته برای رنگ‌آمیزی Plotly
+        # Set Is_DFT_Verified as string for Plotly coloring
         plot_df['Is_DFT_Verified'] = plot_df['Is_DFT_Verified'].astype(str)
 
         fig = px.scatter(
@@ -432,15 +444,15 @@ if x_axis_name and y_axis_name:
             margin=dict(l=40, r=40, t=60, b=40)
         )
 
-        # دریافت رویداد کلیک
+        # Capture click event natively with Streamlit
         selected_data = st.plotly_chart(fig, use_container_width=True, on_select="rerun", key="scatter_plot")
 
-        # در صورت کلیک کردن روی یک نقطه، آن را در سایدبار نمایش می‌دهیم
+        # If a point is clicked, update session state and display it in the sidebar
         if selected_data and "selection" in selected_data and selected_data["selection"].get("points"):
             clicked_material = selected_data["selection"]["points"][0]["customdata"][0]
             if st.session_state.selected_material != clicked_material:
                 st.session_state.selected_material = clicked_material
-                # با rerun، برنامه دوباره اجرا شده و اطلاعات در سایدبار رندر می‌شود
+                # Rerun the app to render sidebar info immediately
                 st.rerun()
 
 st.caption("Materials Explorer Pro — 3D Viewer with HTML/3Dmol.js • Neon Sliders • Data Filter • 2026")
