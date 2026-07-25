@@ -267,12 +267,22 @@ if st.session_state.show_3d and st.session_state.selected_material:
 
 # ====================== نمودار اصلی ======================
 st.markdown("### Chart Settings")
+
+dft_filter = st.radio(
+    "Filter by DFT Verification:",
+    options=["Show All", "Only DFT Verified (Blue)", "Only Not Verified (Orange)"],
+    horizontal=True
+)
+
+all_features = sorted(list(set(atomic_features + mechanical_properties)))
+
 col1, col2 = st.columns(2)
 with col1:
-    x_axis_name = st.selectbox("Select X-Axis Feature:", atomic_features, 
-                               index=atomic_features.index("atomic_number") if "atomic_number" in atomic_features else 0)
+    x_axis_name = st.selectbox("Select X-Axis Feature:", all_features, 
+                               index=all_features.index("atomic_number") if "atomic_number" in all_features else 0)
 with col2:
-    y_axis_name = st.selectbox("Select Y-Axis Feature:", mechanical_properties)
+    y_axis_name = st.selectbox("Select Y-Axis Feature:", all_features,
+                               index=all_features.index("Elastic_C11") if "Elastic_C11" in all_features else 0)
 
 if x_axis_name and y_axis_name:
     # پاکسازی داده‌ها و تبدیل به عددی برای اسلایدر
@@ -306,6 +316,12 @@ if x_axis_name and y_axis_name:
     # اعمال فیلتر بر اساس اسلایدرها
     plot_df = clean_df[(clean_df[x_axis_name] >= x_range[0]) & (clean_df[x_axis_name] <= x_range[1]) & 
                        (clean_df[y_axis_name] >= y_range[0]) & (clean_df[y_axis_name] <= y_range[1])].copy()
+
+    # اعمال فیلتر وضعیت DFT
+    if dft_filter == "Only DFT Verified (Blue)":
+        plot_df = plot_df[plot_df['Is_DFT_Verified'].astype(str).str.lower() == 'true']
+    elif dft_filter == "Only Not Verified (Orange)":
+        plot_df = plot_df[plot_df['Is_DFT_Verified'].astype(str).str.lower() == 'false']
 
     if plot_df.empty:
         st.warning("No data in the selected range.")
