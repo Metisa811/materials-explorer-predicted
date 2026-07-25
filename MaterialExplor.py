@@ -126,64 +126,60 @@ if not global_df.empty:
 
 @st.dialog("📊 Prediction Models Accuracy", width="large")
 def show_accuracy_metrics():
-    st.code("""
-======================================================================
-Final Complete Summary — 48 Regression Properties + 1 Classifier
-======================================================================
+    st.markdown("### 📈 Regression Properties (48 Targets)")
+    st.markdown("Metrics evaluated using **R² Score** and **Mean Absolute Error (MAE)**.")
+    
+    raw_metrics = [
+        ("Bulk_Modulus_GPa", 0.981, 5.423), ("Shear_Modulus_GPa", 0.872, 7.908),
+        ("Poisson_Ratio", 0.674, 0.020), ("C11", 0.927, 17.105),
+        ("C12", 0.807, 11.900), ("C13", 0.945, 7.439),
+        ("C33", 0.964, 12.845), ("C44", 0.933, 7.479),
+        ("C66", 0.804, 10.167), ("Young_Modulus_GPa", 0.885, 18.582),
+        ("P_wave_Modulus_GPa", 0.953, 14.652), ("Pughs_Ratio", 0.468, 0.331),
+        ("Aniso_Bulk_Min", 0.932, 9.415), ("Aniso_Bulk_Max", 0.569, 34.302),
+        ("Aniso_Bulk_Anisotropy", 0.299, 0.283), ("Aniso_Young_Min", 0.774, 24.426),
+        ("Aniso_Young_Max", 0.908, 18.352), ("Aniso_Young_Anisotropy", 0.222, 0.302),
+        ("Aniso_Shear_Min", 0.754, 10.419), ("Aniso_Shear_Max", 0.927, 7.596),
+        ("Aniso_Shear_Anisotropy", 0.217, 0.535), ("Aniso_Poisson_Min", -0.141, 0.110),
+        ("Aniso_Poisson_Max", 0.366, 0.098), ("Aniso_Poisson_Anisotropy", -1.114, 10.950),
+        ("Aniso_LinComp_Min", 0.713, 0.382), ("Aniso_LinComp_Max", 0.832, 0.399),
+        ("Aniso_LinComp_Anisotropy", 0.294, 0.285), ("Bulk_Modulus_GPa_Voigt", 0.982, 5.277),
+        ("Bulk_Modulus_GPa_Reuss", 0.977, 5.811), ("Shear_Modulus_GPa_Voigt", 0.904, 6.957),
+        ("Shear_Modulus_GPa_Reuss", 0.831, 9.162), ("Poisson_Ratio_Voigt", 0.737, 0.017),
+        ("Poisson_Ratio_Reuss", 0.574, 0.025), ("Young_Modulus_GPa_Voigt", 0.913, 16.223),
+        ("Young_Modulus_GPa_Reuss", 0.835, 22.466), ("P_wave_Modulus_GPa_Voigt", 0.963, 12.937),
+        ("P_wave_Modulus_GPa_Reuss", 0.936, 16.988), ("Pughs_Ratio_Voigt", 0.600, 0.263),
+        ("Pughs_Ratio_Reuss", 0.400, 0.401), ("Cauchy_Pressure_GPa", 0.765, 14.686),
+        ("Kleinmans_Parameter", 0.436, 0.124), ("Universal_Elastic_Anisotropy", 0.316, 0.355),
+        ("Chung_Buessem_Anisotropy", 0.184, 0.051), ("Isotropic_Poissons_Ratio", 0.668, 0.020),
+        ("Wave_Velocity_Average", 0.865, 225.695), ("Wave_Velocity_Longitudinal", 0.954, 182.717),
+        ("Wave_Velocity_Transverse", 0.862, 207.977), ("Debye_Temperature_K", 0.891, 27.912)
+    ]
+    
+    df_metrics = pd.DataFrame(raw_metrics, columns=["Target Property", "R² Score", "MAE"])
+    
+    def highlight_r2(val):
+        if val >= 0.85:
+            return 'background-color: rgba(74, 222, 128, 0.15); color: #4ade80; font-weight: bold;'
+        elif val >= 0.60:
+            return 'background-color: rgba(250, 204, 21, 0.15); color: #facc15; font-weight: bold;'
+        else:
+            return 'background-color: rgba(248, 113, 113, 0.15); color: #f87171; font-weight: bold;'
 
-Target                               R2        MAE
---------------------------------------------------
-Bulk_Modulus_GPa                  0.981      5.423
-Shear_Modulus_GPa                 0.872      7.908
-Poisson_Ratio                     0.674      0.020
-C11                               0.927     17.105
-C12                               0.807     11.900
-C13                               0.945      7.439
-C33                               0.964     12.845
-C44                               0.933      7.479
-C66                               0.804     10.167
-Young_Modulus_GPa                 0.885     18.582
-P_wave_Modulus_GPa                0.953     14.652
-Pughs_Ratio                       0.468      0.331
-Aniso_Bulk_Min                    0.932      9.415
-Aniso_Bulk_Max                    0.569     34.302
-Aniso_Bulk_Anisotropy             0.299      0.283
-Aniso_Young_Min                   0.774     24.426
-Aniso_Young_Max                   0.908     18.352
-Aniso_Young_Anisotropy            0.222      0.302
-Aniso_Shear_Min                   0.754     10.419
-Aniso_Shear_Max                   0.927      7.596
-Aniso_Shear_Anisotropy            0.217      0.535
-Aniso_Poisson_Min                -0.141      0.110
-Aniso_Poisson_Max                 0.366      0.098
-Aniso_Poisson_Anisotropy         -1.114     10.950
-Aniso_LinComp_Min                 0.713      0.382
-Aniso_LinComp_Max                 0.832      0.399
-Aniso_LinComp_Anisotropy          0.294      0.285
-Bulk_Modulus_GPa_Voigt            0.982      5.277
-Bulk_Modulus_GPa_Reuss            0.977      5.811
-Shear_Modulus_GPa_Voigt           0.904      6.957
-Shear_Modulus_GPa_Reuss           0.831      9.162
-Poisson_Ratio_Voigt               0.737      0.017
-Poisson_Ratio_Reuss               0.574      0.025
-Young_Modulus_GPa_Voigt           0.913     16.223
-Young_Modulus_GPa_Reuss           0.835     22.466
-P_wave_Modulus_GPa_Voigt          0.963     12.937
-P_wave_Modulus_GPa_Reuss          0.936     16.988
-Pughs_Ratio_Voigt                 0.600      0.263
-Pughs_Ratio_Reuss                 0.400      0.401
-Cauchy_Pressure_GPa               0.765     14.686
-Kleinmans_Parameter               0.436      0.124
-Universal_Elastic_Anisotropy      0.316      0.355
-Chung_Buessem_Anisotropy          0.184      0.051
-Isotropic_Poissons_Ratio          0.668      0.020
-Wave_Velocity_Average             0.865    225.695
-Wave_Velocity_Longitudinal        0.954    182.717
-Wave_Velocity_Transverse          0.862    207.977
-Debye_Temperature_K               0.891     27.912
---------------------------------------------------
-Brittleness (classifier)       Acc=0.861   F1=0.768
-    """, language=None)
+    # Apply styling using map (pandas >= 2.1.0) or applymap (older versions)
+    try:
+        styled_df = df_metrics.style.map(highlight_r2, subset=['R² Score']).format({"R² Score": "{:.3f}", "MAE": "{:.3f}"})
+    except AttributeError:
+        styled_df = df_metrics.style.applymap(highlight_r2, subset=['R² Score']).format({"R² Score": "{:.3f}", "MAE": "{:.3f}"})
+
+    st.dataframe(styled_df, use_container_width=True, hide_index=True, height=450)
+    
+    st.markdown("---")
+    st.markdown("### 🗂️ Classification Model")
+    col_c1, col_c2, col_c3 = st.columns(3)
+    col_c1.metric(label="Target Attribute", value="Brittleness")
+    col_c2.metric(label="Accuracy", value="86.1%", delta="High")
+    col_c3.metric(label="F1-Score", value="0.768", delta="Good")
 
 if st.button("📊 Show Prediction Metrics", type="primary"):
     show_accuracy_metrics()
