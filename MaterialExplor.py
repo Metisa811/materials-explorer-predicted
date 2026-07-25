@@ -124,16 +124,27 @@ with col2:
     y_axis_name = st.selectbox("Select Mechanical Property (Y-Axis):", mechanical_properties)
 
 if x_axis_name and y_axis_name:
-    plot_df = global_df[['material', x_axis_name, y_axis_name]].copy()
+    plot_df = global_df[['material', x_axis_name, y_axis_name, 'Is_DFT_Verified']].copy()
     plot_df[x_axis_name] = pd.to_numeric(plot_df[x_axis_name], errors='coerce')
     plot_df[y_axis_name] = pd.to_numeric(plot_df[y_axis_name], errors='coerce')
+    # Convert Is_DFT_Verified to string to treat as categorical/discrete color
+    plot_df['Is_DFT_Verified'] = plot_df['Is_DFT_Verified'].astype(str)
     plot_df = plot_df.dropna(subset=[x_axis_name, y_axis_name])
 
     if plot_df.empty:
         st.warning(f"No valid data for {x_axis_name} vs {y_axis_name}")
     else:
         fig = px.scatter(
-            plot_df, x=x_axis_name, y=y_axis_name, hover_data=['material'], custom_data=['material']
+            plot_df, 
+            x=x_axis_name, 
+            y=y_axis_name, 
+            hover_data=['material'], 
+            custom_data=['material'],
+            color='Is_DFT_Verified',
+            color_discrete_map={
+                'True': 'blue',
+                'False': 'orange'
+            }
         )
 
         try:
