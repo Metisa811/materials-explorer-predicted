@@ -44,27 +44,57 @@ def load_data():
 
             if "Elastic_Tensor_Voigt" in data:
                 for k, v in data["Elastic_Tensor_Voigt"].items():
-                    props[f"Elastic_{k}"] = v
+                    props[f"Elastic_Constant_{k}_(GPa)"] = v
 
             if "Anisotropic_Mechanical_Properties" in data:
                 for key, stats in data["Anisotropic_Mechanical_Properties"].items():
-                    clean_key = key.lstrip('|__').replace('__', '_')
+                    prop_name = key
+                    if "Bulk" in key: prop_name = "Bulk_Modulus"
+                    elif "Young" in key: prop_name = "Youngs_Modulus"
+                    elif "Shear" in key: prop_name = "Shear_Modulus"
+                    elif "Poisson" in key: prop_name = "Poissons_Ratio"
+                    elif "Linear" in key or "LinComp" in key: prop_name = "Linear_Compressibility"
+                    
+                    unit = "_(GPa)" if prop_name in ["Bulk_Modulus", "Youngs_Modulus", "Shear_Modulus"] else ""
+                    
                     if isinstance(stats, dict):
                         for stat in ["Min", "Max", "Anisotropy"]:
                             if stat in stats:
-                                props[f"Aniso_{clean_key}_{stat}"] = stats[stat]
+                                if stat == "Anisotropy":
+                                    props[f"Anisotropic_{prop_name}_Anisotropy"] = stats[stat]
+                                else:
+                                    props[f"Anisotropic_{prop_name}_{stat}{unit}"] = stats[stat]
 
             if "Average_Mechanical_Properties" in data:
                 for key, stats in data["Average_Mechanical_Properties"].items():
-                    clean_key = key.lstrip('|__').replace('__', '_')
+                    prop_name = key
+                    if "Bulk" in key: prop_name = "Bulk_Modulus"
+                    elif "Young" in key: prop_name = "Youngs_Modulus"
+                    elif "Shear" in key: prop_name = "Shear_Modulus"
+                    elif "Poisson" in key: prop_name = "Poissons_Ratio"
+                    elif "P_wave" in key or "Pwave" in key: prop_name = "Pwave_Modulus"
+                    elif "Pugh" in key: prop_name = "Pughs_Ratio"
+                    
+                    unit = "_(GPa)" if prop_name in ["Bulk_Modulus", "Youngs_Modulus", "Shear_Modulus", "Pwave_Modulus"] else ""
+                    
                     if isinstance(stats, dict):
                         for stat in ["Voigt", "Reuss", "Hill"]:
                             if stat in stats:
-                                props[f"Avg_{clean_key}_{stat}"] = stats[stat]
+                                props[f"Average_{prop_name}_{stat}{unit}"] = stats[stat]
 
             if "Additional_Properties" in data:
                 for key, val in data["Additional_Properties"].items():
-                    props[key] = val
+                    if "Cauchy" in key: props["Cauchy_Pressure_(GPa)"] = val
+                    elif "Kleinman" in key: props["Kleinmans_Parameter"] = val
+                    elif "Universal" in key: props["Universal_Elastic_Anisotropy"] = val
+                    elif "Chung" in key: props["Chung_Buessem_Anisotropy"] = val
+                    elif key == "Isotropic_Poissons_Ratio" or "Isotropic_Poisson" in key: props["Isotropic_Poissons_Ratio"] = val
+                    elif "Velocity_Longitudinal" in key: props["Wave_Velocity_Longitudinal_(m/s)"] = val
+                    elif "Velocity_Transverse" in key: props["Wave_Velocity_Transverse_(m/s)"] = val
+                    elif "Velocity_Average" in key: props["Wave_Velocity_Average_(m/s)"] = val
+                    elif "Debye" in key: props["Debye_Temperature_(K)"] = val
+                    elif "Pughs_Ratio" in key: props["Pughs_Ratio_B_over_G"] = val
+                    else: props[key] = val
             
             mechanical_properties_list.append(props)
 
@@ -126,34 +156,59 @@ if not global_df.empty:
 
 @st.dialog("📊 Prediction Models Accuracy", width="large")
 def show_accuracy_metrics():
-    st.markdown("### 📈 Regression Properties (48 Targets)")
+    st.markdown("### 📈 Final Complete Summary — 48 Regression Properties + 1 Classifier + 1 Physical Formula")
     st.markdown("Metrics evaluated using **R² Score** and **Mean Absolute Error (MAE)**.")
     
     raw_metrics = [
-        ("Bulk_Modulus_GPa", 0.981, 5.423), ("Shear_Modulus_GPa", 0.872, 7.908),
-        ("Poisson_Ratio", 0.674, 0.020), ("C11", 0.927, 17.105),
-        ("C12", 0.807, 11.900), ("C13", 0.945, 7.439),
-        ("C33", 0.964, 12.845), ("C44", 0.933, 7.479),
-        ("C66", 0.804, 10.167), ("Young_Modulus_GPa", 0.885, 18.582),
-        ("P_wave_Modulus_GPa", 0.953, 14.652), ("Pughs_Ratio", 0.468, 0.331),
-        ("Aniso_Bulk_Min", 0.932, 9.415), ("Aniso_Bulk_Max", 0.569, 34.302),
-        ("Aniso_Bulk_Anisotropy", 0.299, 0.283), ("Aniso_Young_Min", 0.774, 24.426),
-        ("Aniso_Young_Max", 0.908, 18.352), ("Aniso_Young_Anisotropy", 0.222, 0.302),
-        ("Aniso_Shear_Min", 0.754, 10.419), ("Aniso_Shear_Max", 0.927, 7.596),
-        ("Aniso_Shear_Anisotropy", 0.217, 0.535), ("Aniso_Poisson_Min", -0.141, 0.110),
-        ("Aniso_Poisson_Max", 0.366, 0.098), ("Aniso_Poisson_Anisotropy", -1.114, 10.950),
-        ("Aniso_LinComp_Min", 0.713, 0.382), ("Aniso_LinComp_Max", 0.832, 0.399),
-        ("Aniso_LinComp_Anisotropy", 0.294, 0.285), ("Bulk_Modulus_GPa_Voigt", 0.982, 5.277),
-        ("Bulk_Modulus_GPa_Reuss", 0.977, 5.811), ("Shear_Modulus_GPa_Voigt", 0.904, 6.957),
-        ("Shear_Modulus_GPa_Reuss", 0.831, 9.162), ("Poisson_Ratio_Voigt", 0.737, 0.017),
-        ("Poisson_Ratio_Reuss", 0.574, 0.025), ("Young_Modulus_GPa_Voigt", 0.913, 16.223),
-        ("Young_Modulus_GPa_Reuss", 0.835, 22.466), ("P_wave_Modulus_GPa_Voigt", 0.963, 12.937),
-        ("P_wave_Modulus_GPa_Reuss", 0.936, 16.988), ("Pughs_Ratio_Voigt", 0.600, 0.263),
-        ("Pughs_Ratio_Reuss", 0.400, 0.401), ("Cauchy_Pressure_GPa", 0.765, 14.686),
-        ("Kleinmans_Parameter", 0.436, 0.124), ("Universal_Elastic_Anisotropy", 0.316, 0.355),
-        ("Chung_Buessem_Anisotropy", 0.184, 0.051), ("Isotropic_Poissons_Ratio", 0.668, 0.020),
-        ("Wave_Velocity_Average", 0.865, 225.695), ("Wave_Velocity_Longitudinal", 0.954, 182.717),
-        ("Wave_Velocity_Transverse", 0.862, 207.977), ("Debye_Temperature_K", 0.891, 27.912)
+        ("Elastic_Constant_C11_(GPa)", 0.927, 17.105),
+        ("Elastic_Constant_C12_(GPa)", 0.807, 11.900),
+        ("Elastic_Constant_C13_(GPa)", 0.945, 7.439),
+        ("Elastic_Constant_C33_(GPa)", 0.964, 12.845),
+        ("Elastic_Constant_C44_(GPa)", 0.933, 7.479),
+        ("Elastic_Constant_C66_(GPa)", 0.804, 10.167),
+        ("Anisotropic_Bulk_Modulus_Min_(GPa)", 0.932, 9.415),
+        ("Anisotropic_Bulk_Modulus_Max_(GPa)", 0.569, 34.302),
+        ("Anisotropic_Bulk_Modulus_Anisotropy", 0.299, 0.283),
+        ("Anisotropic_Youngs_Modulus_Min_(GPa)", 0.774, 24.426),
+        ("Anisotropic_Youngs_Modulus_Max_(GPa)", 0.908, 18.352),
+        ("Anisotropic_Youngs_Modulus_Anisotropy", 0.222, 0.302),
+        ("Anisotropic_Shear_Modulus_Min_(GPa)", 0.754, 10.419),
+        ("Anisotropic_Shear_Modulus_Max_(GPa)", 0.927, 7.596),
+        ("Anisotropic_Shear_Modulus_Anisotropy", 0.217, 0.535),
+        ("Anisotropic_Poissons_Ratio_Min", -0.141, 0.110),
+        ("Anisotropic_Poissons_Ratio_Max", 0.366, 0.098),
+        ("Anisotropic_Poissons_Ratio_Anisotropy", -1.114, 10.950),
+        ("Anisotropic_Linear_Compressibility_Min", 0.713, 0.382),
+        ("Anisotropic_Linear_Compressibility_Max", 0.832, 0.399),
+        ("Anisotropic_Linear_Compressibility_Anisotropy", 0.294, 0.285),
+        ("Average_Bulk_Modulus_Voigt_(GPa)", 0.982, 5.277),
+        ("Average_Bulk_Modulus_Reuss_(GPa)", 0.977, 5.811),
+        ("Average_Bulk_Modulus_Hill_(GPa)", 0.981, 5.423),
+        ("Average_Youngs_Modulus_Voigt_(GPa)", 0.913, 16.223),
+        ("Average_Youngs_Modulus_Reuss_(GPa)", 0.835, 22.466),
+        ("Average_Youngs_Modulus_Hill_(GPa)", 0.885, 18.582),
+        ("Average_Shear_Modulus_Voigt_(GPa)", 0.904, 6.957),
+        ("Average_Shear_Modulus_Reuss_(GPa)", 0.831, 9.162),
+        ("Average_Shear_Modulus_Hill_(GPa)", 0.872, 7.908),
+        ("Average_Poissons_Ratio_Voigt", 0.737, 0.017),
+        ("Average_Poissons_Ratio_Reuss", 0.574, 0.025),
+        ("Average_Poissons_Ratio_Hill", 0.674, 0.020),
+        ("Average_Pwave_Modulus_Voigt_(GPa)", 0.963, 12.937),
+        ("Average_Pwave_Modulus_Reuss_(GPa)", 0.936, 16.988),
+        ("Average_Pwave_Modulus_Hill_(GPa)", 0.953, 14.652),
+        ("Average_Pughs_Ratio_Voigt", 0.600, 0.263),
+        ("Average_Pughs_Ratio_Reuss", 0.400, 0.401),
+        ("Average_Pughs_Ratio_Hill", 0.468, 0.331),
+        ("Pughs_Ratio_B_over_G", 0.468, 0.331),
+        ("Cauchy_Pressure_(GPa)", 0.765, 14.686),
+        ("Kleinmans_Parameter", 0.436, 0.124),
+        ("Universal_Elastic_Anisotropy", 0.316, 0.355),
+        ("Chung_Buessem_Anisotropy", 0.184, 0.051),
+        ("Isotropic_Poissons_Ratio", 0.668, 0.020),
+        ("Wave_Velocity_Longitudinal_(m/s)", 0.954, 182.717),
+        ("Wave_Velocity_Transverse_(m/s)", 0.862, 207.977),
+        ("Wave_Velocity_Average_(m/s)", 0.865, 225.695),
+        ("Debye_Temperature_(K)", 0.891, 27.912)
     ]
     
     df_metrics = pd.DataFrame(raw_metrics, columns=["Target Property", "R² Score", "MAE"])
@@ -166,7 +221,6 @@ def show_accuracy_metrics():
         else:
             return 'background-color: rgba(248, 113, 113, 0.15); color: #f87171; font-weight: bold;'
 
-    # Apply styling using map (pandas >= 2.1.0) or applymap (older versions)
     try:
         styled_df = df_metrics.style.map(highlight_r2, subset=['R² Score']).format({"R² Score": "{:.3f}", "MAE": "{:.3f}"})
     except AttributeError:
@@ -175,11 +229,10 @@ def show_accuracy_metrics():
     st.dataframe(styled_df, use_container_width=True, hide_index=True, height=450)
     
     st.markdown("---")
-    st.markdown("### 🗂️ Classification Model")
-    col_c1, col_c2, col_c3 = st.columns(3)
-    col_c1.metric(label="Target Attribute", value="Brittleness")
-    col_c2.metric(label="Accuracy", value="86.1%", delta="High")
-    col_c3.metric(label="F1-Score", value="0.768", delta="Good")
+    st.markdown("### 🗂️ Additional Features (Classifier & Physical Formula)")
+    col_c1, col_c2 = st.columns(2)
+    col_c1.metric(label="Brittleness_Indicator (Classifier)", value="Acc = 86.1%", delta="F1 = 0.768")
+    col_c2.metric(label="Mechanical_Stability (Born criteria)", value="Physics Based", delta="N/A (Physical, not ML)", delta_color="off")
 
 if st.button("📊 Show Prediction Metrics", type="primary"):
     show_accuracy_metrics()
@@ -354,7 +407,7 @@ with col1:
                                index=all_features.index("atomic_number") if "atomic_number" in all_features else 0)
 with col2:
     y_axis_name = st.selectbox("Select Y-Axis Feature:", all_features,
-                               index=all_features.index("Elastic_C11") if "Elastic_C11" in all_features else 0)
+                               index=all_features.index("Elastic_Constant_C11_(GPa)") if "Elastic_Constant_C11_(GPa)" in all_features else 0)
 
 if x_axis_name and y_axis_name:
     # Clean data and convert to numeric for sliders
