@@ -38,7 +38,7 @@ def load_data():
                 continue
                 
             props = {"material": material}
-            for root_key in ["Crystal_System", "Space_Group", "Independent_Elastic_Constants", "Is_DFT_Verified"]:
+            for root_key in ["Crystal_System", "Space_Group", "Independent_Elastic_Constants", "Is_DFT_Verified", "Mechanical_Stability"]:
                 if root_key in data:
                     props[root_key] = data[root_key]
 
@@ -139,7 +139,7 @@ def load_data():
 global_df, atomic_features, mechanical_properties = load_data()
 
 st.title("🧪 Materials & Elastic Properties Explorer Pro")
-st.markdown("**Blue = DFT Verified | Orange = Not Verified | Click → View 3D Structure**")
+st.markdown("**🔵 Blue: Stable & Verified | 🟠 Orange: Stable & Unverified | 🔴 Red: Unstable & Verified | 🌸 Pink: Unstable & Unverified | Click → View 3D Structure**")
 st.markdown("---")
 
 # Calculate and display dataset statistics
@@ -273,12 +273,22 @@ with st.sidebar:
         if mat in global_df['material'].values:
             row = global_df[global_df['material'] == mat].iloc[0]
 
-            # Display DFT status with colors
+            # Display DFT status and Stability with colors
             dft_status = str(row.get("Is_DFT_Verified", "Unknown"))
+            stability_status = str(row.get("Mechanical_Stability", "Unknown"))
+            
+            col_stat_a, col_stat_b = st.columns(2)
             if dft_status.lower() == "true":
-                st.info("🔹 DFT Verified")
+                col_stat_a.info("🔹 Verified")
             else:
-                st.warning("🔸 Not DFT Verified")
+                col_stat_a.warning("🔸 Unverified")
+                
+            if stability_status.lower() == "stable":
+                col_stat_b.success("✅ Stable")
+            elif stability_status.lower() == "unstable":
+                col_stat_b.error("❌ Unstable")
+            else:
+                col_stat_b.write("❔ Unknown Stability")
 
             st.markdown(f"### **{mat}**")
 
@@ -394,8 +404,14 @@ if st.session_state.show_3d and st.session_state.selected_material:
 st.markdown("### Chart Settings")
 
 dft_filter = st.radio(
-    "Filter by DFT Verification:",
-    options=["Show All", "Only DFT Verified (Blue)", "Only Not Verified (Orange)"],
+    "Filter by Verification & Stability:",
+    options=[
+        "Show All", 
+        "🔵 Stable & Verified (Blue)", 
+        "🟠 Stable & Unverified (Orange)",
+        "🔴 Unstable & Verified (Red)",
+        "🌸 Unstable & Unverified (Pink)"
+    ],
     horizontal=True
 )
 
@@ -442,28 +458,44 @@ if x_axis_name and y_axis_name:
     plot_df = clean_df[(clean_df[x_axis_name] >= x_range[0]) & (clean_df[x_axis_name] <= x_range[1]) & 
                        (clean_df[y_axis_name] >= y_range[0]) & (clean_df[y_axis_name] <= y_range[1])].copy()
 
-    # Apply DFT status filter
-    if dft_filter == "Only DFT Verified (Blue)":
-        plot_df = plot_df[plot_df['Is_DFT_Verified'].astype(str).str.lower() == 'true']
-    elif dft_filter == "Only Not Verified (Orange)":
-        plot_df = plot_df[plot_df['Is_DFT_Verified'].astype(str).str.lower() == 'false']
+    # Categorize Status for Colors
+    def categorize_status(r):
+        is_verified = str(r.get('Is_DFT_Verified', 'False')).lower() == 'true'
+        stab = str(r.get('Mechanical_Stability', 'Unknown')).lower()
+        
+        if stab == 'stable':
+            return 'Stable & Verified' if is_verified else 'Stable & Unverified'
+        else:
+            return 'Unstable & Verified' if is_verified else 'Unstable & Unverified'
+
+    if not plot_df.empty:
+        plot_df['Status'] = plot_df.apply(categorize_status, axis=1)
+
+    # Apply DFT and Stability filter
+    if dft_filter == "🔵 Stable & Verified (Blue)":
+        plot_df = plot_df[plot_df['Status'] == 'Stable & Verified']
+    elif dft_filter == "🟠 Stable & Unverified (Orange)":
+        plot_df = plot_df[plot_df['Status'] == 'Stable & Unverified']
+    elif dft_filter == "🔴 Unstable & Verified (Red)":
+        plot_df = plot_df[plot_df['Status'] == 'Unstable & Verified']
+    elif dft_filter == "🌸 Unstable & Unverified (Pink)":
+        plot_df = plot_df[plot_df['Status'] == 'Unstable & Unverified']
 
     if plot_df.empty:
         st.warning("No data in the selected range.")
     else:
-        # Set Is_DFT_Verified as string for Plotly coloring
-        plot_df['Is_DFT_Verified'] = plot_df['Is_DFT_Verified'].astype(str)
-
         fig = px.scatter(
             plot_df, 
             x=x_axis_name, 
             y=y_axis_name, 
-            hover_data=['material'], 
+            hover_data=['material', 'Mechanical_Stability'], 
             custom_data=['material'],
-            color='Is_DFT_Verified',
+            color='Status',
             color_discrete_map={
-                'True': '#1f77b4',  # Blue
-                'False': '#ff7f0e'  # Orange
+                'Stable & Verified': '#1f77b4',     # Blue
+                'Stable & Unverified': '#ff7f0e',   # Orange
+                'Unstable & Verified': '#d62728',   # Red
+                'Unstable & Unverified': '#f472b6'  # Pink
             }
         )
 
